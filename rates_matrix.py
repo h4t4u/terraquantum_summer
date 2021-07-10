@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-TIME_MAX_GAP = 100000000000 # If gap in initial csv is bigger than TIME_QUANTUM, values are not taken
+TIME_MAX_GAP = 1000 # If gap in initial csv is bigger than TIME_QUANTUM, values are not taken
 
 def currencies_list(filenames_file):
     currencies = set()
