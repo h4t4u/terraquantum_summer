@@ -23,7 +23,7 @@ def currencies_list(filenames_file):
 
 ### returns 3-dimensional array w/currency rates; one 2d array for each timestamp
 
-def rates_matrix(timestamps, filenames_file):
+def rates_matrix(timestamps, filenames_file, csv_dir):
     global TIME_MAX_GAP
     currencies = currencies_list(filenames_file)
     graph_table = np.full([len(timestamps),len(currencies),len(currencies)],np.nan)
@@ -32,7 +32,7 @@ def rates_matrix(timestamps, filenames_file):
     urls_file.close()
 
     for url in urls:
-        filename = 'csv2/' + url
+        filename = csv_dir + '/' + url
         prefix = url[:-4]
         if len(prefix) == 6:
             currency1 = prefix[0:3]
@@ -40,48 +40,6 @@ def rates_matrix(timestamps, filenames_file):
         else:
             currency1 = prefix
             currency2 = 'USD'
-        i = np.where(currencies == currency1)[0]
-        j = np.where(currencies == currency2)[0]
-
-        df = pd.read_csv(filename)
-        try:
-            array = np.array(df.loc[:,'timestamp'])
-            array = (array[array.astype(np.float) > 1e12])                      # defective data filtering out
-            array = (array[array.astype(np.float) < 1.8e12]).astype(np.int64)   # 
-            if array.max() < timestamps[0] or array.min() > timestamps[-1]:
-                continue
-            t = 0
-            for timestamp in timestamps:
-                s = df.iloc[np.argmin(np.abs(array - timestamp))]
-                if abs(int(s['timestamp'])-timestamp) > TIME_MAX_GAP:
-                    continue
-                graph_table[t,i,j] = s['bid']
-                graph_table[t,j,i] = 1/s['ask']
-                t += 1
-                
-        except KeyError:
-            print('error in file', filename, 'row:', s)
-    print('csv read')
-    return (graph_table, currencies)
-
-# Does not take two-node cycles into account
-
-def rates_matrix_optimized(timestamps, filenames_file):
-    global TIME_MAX_GAP
-    currencies = currencies_list(filenames_file)
-    graph_table = np.full([len(timestamps),len(currencies),len(currencies)],np.nan)
-    urls_file = open(filenames_file)
-    urls = urls_file.read().splitlines()
-    urls_file.close()
-
-    for url in urls:
-        filename = 'csv2/' + url
-        prefix = url[:-4]
-        if len(prefix) == 6:
-            currency1 = prefix[0:3]
-            currency2 = prefix[3:]
-        else:
-            continue
         i = np.where(currencies == currency1)[0]
         j = np.where(currencies == currency2)[0]
 
@@ -102,12 +60,20 @@ def rates_matrix_optimized(timestamps, filenames_file):
                 graph_table[t,i,j] = s['bid']
                 graph_table[t,j,i] = 1/s['ask']
                 t += 1
+                
         except KeyError:
             print('error in file', filename, 'row:', s)
 
+    return (graph_table, currencies)
+
+# Does not take two-node cycles into account
+
+def rates_matrix_optimized(timestamps, filenames_file, csv_dir):
+    graph_table, currencies = rates_matrix(timestamps, filenames_file, csv_dir)
     i = 0
     while i < graph_table.shape[2]:
-        if np.count_nonzero(~np.isnan(graph_table[:, i, :])) <= 2*len(timestamps):
+        array = graph_table[:, i, :]
+        if np.count_nonzero(~np.isnan(array)) <= 2*len(timestamps):
             graph_table = np.delete(graph_table, i, 1)
             graph_table = np.delete(graph_table, i, 2)
             currencies = np.delete(currencies, i)
@@ -115,9 +81,13 @@ def rates_matrix_optimized(timestamps, filenames_file):
         else:
             i+=1
 
-    print('csv read')
     return (graph_table, currencies)
 
 def write_to_csv(rates_matrix, currencies, index, output_file):
     final_dataframe = pd.DataFrame(data = rates_matrix[index], index = currencies, columns = currencies)
     final_dataframe.to_csv(output_file, encoding='utf-8')
+
+matrix, currencies = rates_matrix([1624024799495], 'filenames', 'csv2')
+write_to_csv(matrix, currencies, 0, 'result.csv')
+optimized_matrix, currencies_cut = rates_matrix_optimized([1624024799495], 'filenames', 'csv2')
+write_to_csv(optimized_matrix, currencies_cut, 0, 'optimized_result.csv')
