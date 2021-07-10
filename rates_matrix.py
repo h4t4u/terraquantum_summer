@@ -86,8 +86,3 @@ def rates_matrix_optimized(timestamps, filenames_file, csv_dir):
 def write_to_csv(rates_matrix, currencies, index, output_file):
     final_dataframe = pd.DataFrame(data = rates_matrix[index], index = currencies, columns = currencies)
     final_dataframe.to_csv(output_file, encoding='utf-8')
-
-matrix, currencies = rates_matrix([1624024799495], 'filenames', 'csv2')
-write_to_csv(matrix, currencies, 0, 'result.csv')
-optimized_matrix, currencies_cut = rates_matrix_optimized([1624024799495], 'filenames', 'csv2')
-write_to_csv(optimized_matrix, currencies_cut, 0, 'optimized_result.csv')
