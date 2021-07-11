@@ -43,6 +43,9 @@ def rates_matrix(timestamps, filenames_file, csv_dir):
         i = np.where(currencies == currency1)[0]
         j = np.where(currencies == currency2)[0]
 
+        graph_table[:,i,i] = 1
+        graph_table[:,j,j] = 1
+
         df = pd.read_csv(filename)
         try:
             array = np.array(df.loc[:,'timestamp'])
@@ -56,7 +59,6 @@ def rates_matrix(timestamps, filenames_file, csv_dir):
                 s = df.iloc[np.argmin(np.abs(array - timestamp))]
                 if abs(int(s['timestamp'])-timestamp) > TIME_MAX_GAP:
                     continue
-                graph_table[t,i,i] = 1
                 graph_table[t,i,j] = s['bid']
                 graph_table[t,j,i] = 1/s['ask']
                 t += 1
