@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import requests
 
 TIME_MAX_GAP = 1000 # If gap in initial csv is bigger than TIME_QUANTUM, values are not taken
 
@@ -43,9 +44,6 @@ def rates_matrix(timestamps, filenames_file, csv_dir):
         i = np.where(currencies == currency1)[0]
         j = np.where(currencies == currency2)[0]
 
-        graph_table[:,i,i] = 1
-        graph_table[:,j,j] = 1
-
         df = pd.read_csv(filename)
         try:
             array = np.array(df.loc[:,'timestamp'])
@@ -59,6 +57,7 @@ def rates_matrix(timestamps, filenames_file, csv_dir):
                 s = df.iloc[np.argmin(np.abs(array - timestamp))]
                 if abs(int(s['timestamp'])-timestamp) > TIME_MAX_GAP:
                     continue
+                graph_table[t,i,i] = 1
                 graph_table[t,i,j] = s['bid']
                 graph_table[t,j,i] = 1/s['ask']
                 t += 1
@@ -88,3 +87,16 @@ def rates_matrix_optimized(timestamps, filenames_file, csv_dir):
 def write_to_csv(rates_matrix, currencies, index, output_file):
     final_dataframe = pd.DataFrame(data = rates_matrix[index], index = currencies, columns = currencies)
     final_dataframe.to_csv(output_file, encoding='utf-8')
+
+def download_csvs(filenames_file, folder):
+    urls_file = open(filenames_file)
+    urls = urls_file.read().splitlines()
+    for url in urls:
+        filename = folder + '/' + url
+        try:
+            r = requests.get('http://62.213.91.114:5005/Interactive%20Brokers_' + url, allow_redirects=True)
+            print(url, filename, 'http://62.213.91.114:5005/Interactive%20Brokers_' + url)
+            open(filename, 'wb').write(r.content)
+
+        except Exception:
+            print('error while downloading file', filename)
