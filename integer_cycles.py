@@ -3,77 +3,83 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-NUM = 100 # Number of timestamps 
-FILENAMES_FILE = 'filenames'
-CSV_DIR = 'csv'
-AMOUNT = 1000000 # Initial amount of money
-
-#
-# This script calculates the most profitable cycles in the integer-deal model, where we can
-# only buy integer amount of each currency. 
-#
-
-timestamps = np.array([1624024010213 + i * 1000 for i in range(NUM)])
-rates_matrix, currencies = rates_matrix_optimized(timestamps, FILENAMES_FILE, CSV_DIR)
-
-# The method calculates the final amount of money after one cycle
-
-def cycle_count_integer(way, t, value):
-	currencies
+def cycle_count_integer(rates_matrix, currencies, way, t, value):
+	leftovers = 0
+	init_currency_index = np.where(currencies == way[0])[0]
+	init_amount = value
 	for k in range(len(way)-1):
 		currency = way[k]
 		next_currency = way[k+1]
 		try:
 			i = np.where(currencies == currency)[0]
 			j = np.where(currencies == next_currency)[0]
+
 			value *= rates_matrix[t,i,j]
+			if not math.isnan(np.asscalar(rates_matrix[t,j,init_currency_index]*(value%1))):
+				leftovers += np.asscalar(rates_matrix[t,j,init_currency_index]*(value%1))
+
 			value = int(value)
+
+			if not math.isnan(np.asscalar(rates_matrix[t,j,init_currency_index])):
+				leftovers -= value*(0.2*0.01*0.01)*rates_matrix[t,j,init_currency_index]
+
 			if math.isnan(rates_matrix[t,i,j]):
 				print('You cannot buy', currency, 'for', next_currency)
+
 		except ValueError:
 			print('Wrong cycle: one of the currencies isn\'t available:', currency, next_currency)
-			return AMOUNT
-	return value
+			return init_amount
 
-# The method recursively finds the most profitable cycle
+	return value + leftovers
 
-def recursive_find_cycle_integer(way, value, t): 
-    if len(way) > 5: #cycle length limit
-        return
-    if len(way) > 1 and way[-1] == way[0]:
-        cycle_currencies = np.take(currencies, way)
-        if value >= AMOUNT:
-            print('!!!', value, cycle_currencies)
-        return
+#The method calculates income matrix according to given cycle, varying initial amount
 
-    for i in range(len(currencies)):
-        if math.isnan(rates_matrix[t, way[-1], i]):
-            continue
-        if i in way[1:]:
-            continue
-        recursive_find_cycle_integer(np.append(way,i), int(value*rates_matrix[t, way[-1], i]*(1-0.2*0.01*0.01)), t)
+def count_accumulated_income_cycle(rates_matrix, currencies, cycle):
+	income = np.zeros((NUM, 8))
+	for j in range(8):
+		amount = 100*10**j
+		income[0,j] = amount
+		for i in range(1,NUM):
+			income[i,j] = max(cycle_count_integer(rates_matrix, currencies, cycle, i, income[i-1,j]), income[i-1,j])
+	return income
 
-#The method calculates income matrix according to given cycles and timestamps
+#The method calculates incomes according to given cycles and initial amount
 
-def count_income_matrix_integer(cycles):
-	income = np.ones((NUM, cycles.shape[0]))*AMOUNT
+def count_accumulated_income_array(rates_matrix, currencies, cycles, initial_amount):
+	income = np.zeros((NUM, cycles.shape[0]))
+	for j in range(cycles.shape[0]):
+		income[0,j] = initial_amount
+		for i in range(1,NUM):
+			income[i,j] = max(cycle_count_integer(rates_matrix, currencies, cycles[j], i, income[i-1,j]), income[i-1,j])
 
-	for i in range(NUM):
-		for j in range(cycles.shape[0]):
-			income[i,j] = cycle_count_integer(cycles[j], i, AMOUNT)
-
+	print(income)
 	return income
 
 #Plotting the income
 
-def plot_income(income, cycles):
+def plot_accumulated_income_cycle(timestamps, income, cycle):
 	fig = plt.figure(figsize=(8,6))
 	ax = fig.add_subplot()
 	ax.set_xlabel('time, s')
-	ax.set_ylabel('income per cycle, base points')
-	ax.set_title('data for 5-node cycle, initial amount ' + str(AMOUNT) + ' ')
+	ax.set_ylabel('integral income, base points')
+	ax.set_title('data for ' + str(cycle.size) + '-node cycle ' + str(cycle[:-1]))
 
-	for j in range(cycles.shape[0]):
-		plt.plot((timestamps-timestamps[0])/1000, (income[:,j]-AMOUNT)/AMOUNT*10000, label = str(cycles[j][:-1]))
+	for j in range(8):
+		amount = 100*10**j
+		plt.plot((timestamps-timestamps[0])/1000, (income[:,j]-amount)/amount*10000, label = str(amount) + 'USD')
 	plt.legend()
 	plt.show()
+
+def plot_accumulated_income_array(timestamps, income, cycles):
+	fig = plt.figure(figsize=(8,6))
+	ax = fig.add_subplot()
+	ax.set_xlabel('time, s')
+	ax.set_ylabel('integral income, base points')
+	ax.set_title('data for ' + str(cycles.shape[1]-1) + '-node cycles')
+
+	for j in range(cycles.shape[0]):
+		amount = income[0,j]
+		plt.plot((timestamps-timestamps[0])/1000, (income[:,j]-amount)/amount*10000, label = str(cycles[j]))
+	plt.legend()
+	plt.show()
+

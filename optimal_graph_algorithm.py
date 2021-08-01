@@ -18,6 +18,18 @@ def check_minimum_recursively(J, x):
 	for num in range(2**DIM):
 		arr = (((num & (1 << np.arange(DIM)))) > 0).astype(int)*2-1
 		if np.dot(arr.T,np.dot(J,arr)) < minimum:
+			print(x, arr)
+			return False
+	return True
+
+def check_maximum_recursively(J, x):
+	DIM = J.shape[0]
+	maximum = np.dot(x.T,np.dot(J,x))
+
+	for num in range(2**DIM):
+		arr = (((num & (1 << np.arange(DIM)))) > 0).astype(int)*2-1
+		if np.dot(arr.T,np.dot(J,arr)) > maximum:
+			print(x, arr)
 			return False
 	return True
 
@@ -49,7 +61,7 @@ def find_bottom_graph(J):
 def find_top_graph(J):
 	DIM = J.shape[0]
 	x = np.random.sample(DIM)
-	x_scaled = np.sign(x)
+	x_scaled = np.sign(x*2-1)
 	not_bottom = True
 
 	while not_bottom:

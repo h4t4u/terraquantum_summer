@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-TIME_MAX_GAP = 10000 # If gap in initial csv is bigger than TIME_QUANTUM, values are not taken
+TIME_MAX_GAP = 10000 # If gap in initial csv is bigger than TIME_MAX_GAP, values are not taken
 
 def currencies_list(filenames_file):
 	currencies = set()
@@ -46,7 +46,7 @@ def rates_matrix(timestamps, filenames_file, csv_dir):
 		graph_table[:,i,i] = 1
 		graph_table[:,j,j] = 1
 
-
+		print(url)
 
 		df = pd.read_csv(filename)
 		min_ = 0
@@ -92,9 +92,13 @@ def rates_matrix_optimized(timestamps, filenames_file, csv_dir):
 
 	return (graph_table, currencies)
 
-def write_to_csv(rates_matrix, currencies, index, output_file):
-	final_dataframe = pd.DataFrame(data = rates_matrix[index], index = currencies, columns = currencies)
+def write_to_csv(rates_matrix, currencies, output_file):
+	final_dataframe = pd.DataFrame(data = rates_matrix, index = currencies, columns = currencies)
 	final_dataframe.to_csv(output_file, encoding='utf-8')
+
+def read_from_csv(csv_file):
+	dataframe = pd.read_csv(csv_file)
+	return dataframe.to_numpy()[:,1:], list(dataframe.columns)[1:]
 
 def download_csvs(filenames_file, folder):
 	urls_file = open(filenames_file)
